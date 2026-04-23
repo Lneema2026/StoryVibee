@@ -821,9 +821,11 @@ function addVault(id){
 }
 
 /* ACTIVE */
-if(document.getElementById("active")){
+function loadActive() {
+ let activeContainer = document.getElementById("activeList");
+ if(!activeContainer) return;
+
  let a=getData("active");
- let activeContainer = document.getElementById("active");
  activeContainer.classList.add("books-grid");
 
  if(a.length===0){
@@ -859,9 +861,11 @@ function complete(id){
 }
 
 /* VAULT */
-if(document.getElementById("vault")){
+function loadVault() {
+ let vaultContainer = document.getElementById("vaultList");
+ if(!vaultContainer) return;
+
  let v=getData("vault");
- let vaultContainer = document.getElementById("vault");
  vaultContainer.classList.add("books-grid");
 
  if(v.length===0){
@@ -903,9 +907,11 @@ function checkEmpty(listName, containerId, message){
 }
 
 /* COMPLETED */
-if(document.getElementById("completed")){
+function loadCompleted() {
+ let completedContainer = document.getElementById("completedList");
+ if(!completedContainer) return;
+
  let c=getData("completed");
- let completedContainer = document.getElementById("completed");
  completedContainer.classList.add("books-grid");
 
  if(c.length===0){
@@ -923,7 +929,10 @@ if(document.getElementById("completed")){
 }
 
 /* MILESTONES */
-if(document.getElementById("milestones")){
+function loadMilestones() {
+ let milestonesContainer = document.getElementById("milestones");
+ if(!milestonesContainer) return;
+
  let c=getData("completed");
- document.getElementById("milestones").innerHTML=`<div class="book"><h3>Badges: ${Math.floor(c.length/10)} 🏅</h3></div>`;
+ milestonesContainer.innerHTML=`<div class="book"><h3>Badges: ${Math.floor(c.length/10)} 🏅</h3></div>`;
 }
