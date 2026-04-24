@@ -769,6 +769,11 @@ if (!document.getElementById("dynamic-card-styles")) {
 function getData(k){return JSON.parse(localStorage.getItem(k)||"[]")}
 function setData(k,v){localStorage.setItem(k,JSON.stringify(v))}
 
+// Helper function added to retrieve dictionaries (objects) from localStorage.
+// If the key doesn't exist, it defaults to an empty object "{}" instead of an array.
+// This is used for storing page progress and book reviews where we map a book title to its data.
+function getDict(k){return JSON.parse(localStorage.getItem(k)||"{}")}
+
 /* GENRE */
 if(document.getElementById("books")){
  let g=localStorage.getItem("genre") || "";
@@ -798,6 +803,15 @@ if(document.getElementById("books")){
 }
 
 /* ACTIONS */
+
+// Automatically saves the number of pages the user has read.
+// This is triggered by the 'onchange' event in the Active books input field.
+// It stores the progress in a dictionary: { "Book Title": "Pages Read" }
+function saveProgress(id, val){
+ let p = getDict("progress"); // Fetch existing progress data
+ p[id] = val; // Update the specific book's progress
+ setData("progress", p); // Save it back to localStorage
+}
 function start(id){
  let a=getData("active");
  if(!a.includes(id)){
@@ -821,11 +835,14 @@ function addVault(id){
 }
 
 /* ACTIVE */
+
+// Renders the list of books the user is currently reading.
 function loadActive() {
  let activeContainer = document.getElementById("activeList");
- if(!activeContainer) return;
+ if(!activeContainer) return; // Exit if we aren't on the Active page
 
- let a=getData("active");
+ let a=getData("active"); // Array of active book titles
+ let p=getDict("progress"); // Dictionary of pages read per book
  activeContainer.classList.add("books-grid");
 
  if(a.length===0){
@@ -834,10 +851,15 @@ function loadActive() {
 
  a.forEach(id=>{
  let safeTitle = id.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+ let pages = p[id] || "";
  activeContainer.innerHTML+=`
  <div class="book">
  <h3>${id}</h3>
- <input type="number" placeholder="Pages read" style="padding: 10px; margin-bottom: 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
+ <!-- 
+ The 'value' attribute populates the input with the previously saved progress.
+ The 'onchange' event automatically calls saveProgress() whenever the user types a new number. 
+ -->
+ <input type="number" placeholder="Pages read" value="${pages}" onchange="saveProgress('${safeTitle}', this.value)" style="padding: 10px; margin-bottom: 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
  <div class="book-actions">
  <button class="btn" onclick="complete('${safeTitle}')">Complete</button>
  </div>
@@ -861,6 +883,23 @@ function complete(id){
 }
 
 /* VAULT */
+
+// Moves a book from the Vault to the Active list.
+// It removes the book from the 'vault' array, calls the start() function to add it to 'active', and refreshes the page.
+function startFromVault(id){
+ let v=getData("vault").filter(x=>x!==id);
+ setData("vault", v);
+ start(id);
+ location.reload();
+}
+
+// Completely deletes a book from the Vault without starting it.
+function removeFromVault(id){
+ let v=getData("vault").filter(x=>x!==id);
+ setData("vault", v);
+ location.reload();
+}
+
 function loadVault() {
  let vaultContainer = document.getElementById("vaultList");
  if(!vaultContainer) return;
@@ -873,7 +912,15 @@ function loadVault() {
  }
 
  v.forEach(id=>{
- vaultContainer.innerHTML+=`<div class="book"><h3>${id}</h3></div>`;
+ let safeTitle = id.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+ vaultContainer.innerHTML+=`
+ <div class="book">
+ <h3>${id}</h3>
+ <div class="book-actions" style="margin-top: 15px;">
+ <button class="btn" onclick="startFromVault('${safeTitle}')">Start Reading</button>
+ <button class="btn save-btn" style="background: #e53e3e;" onclick="removeFromVault('${safeTitle}')">Remove</button>
+ </div>
+ </div>`;
  });
 }
 
@@ -907,11 +954,24 @@ function checkEmpty(listName, containerId, message){
 }
 
 /* COMPLETED */
+
+// Grabs the values from the Rating and Thoughts input fields for a specific book
+// and saves them into the 'reviews' dictionary in localStorage.
+function saveReview(id){
+ let rating = document.getElementById(`rating-${id}`).value;
+ let thoughts = document.getElementById(`thoughts-${id}`).value;
+ let r = getDict("reviews");
+ r[id] = {rating, thoughts}; // Stores both values in an object associated with the book title
+ setData("reviews", r);
+ alert("Review saved! 🌟");
+}
+
 function loadCompleted() {
  let completedContainer = document.getElementById("completedList");
  if(!completedContainer) return;
 
  let c=getData("completed");
+ let r=getDict("reviews");
  completedContainer.classList.add("books-grid");
 
  if(c.length===0){
@@ -919,20 +979,52 @@ function loadCompleted() {
  }
 
  c.forEach(id=>{
+ let safeTitle = id.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+ // Fetch the saved review for this specific book, or use empty strings if nothing is saved yet.
+ let review = r[id] || {rating: "", thoughts: ""};
  completedContainer.innerHTML+=`
  <div class="book">
  <h3>${id}</h3>
- <input placeholder="Rating (1-5)" style="padding: 10px; margin-bottom: 8px; border-radius: 6px; border: 1px solid #e2e8f0;">
- <textarea placeholder="Thoughts" style="padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0; font-family: inherit; resize: vertical; min-height: 60px;"></textarea>
+ <input id="rating-${safeTitle}" placeholder="Rating (1-5)" value="${review.rating}" style="padding: 10px; margin-bottom: 8px; border-radius: 6px; border: 1px solid #e2e8f0;">
+ <textarea id="thoughts-${safeTitle}" placeholder="Thoughts" style="padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0; font-family: inherit; resize: vertical; min-height: 60px;">${review.thoughts}</textarea>
+ <div class="book-actions" style="margin-top: 15px;">
+ <button class="btn" onclick="saveReview('${safeTitle}')">Save Review</button>
+ </div>
  </div>`;
  });
 }
 
 /* MILESTONES */
+
+// Dynamically calculates reading statistics and assigns badges based on how many books the user has completed.
 function loadMilestones() {
  let milestonesContainer = document.getElementById("milestones");
  if(!milestonesContainer) return;
 
+ // Fetch data from all lists to calculate total stats
  let c=getData("completed");
- milestonesContainer.innerHTML=`<div class="book"><h3>Badges: ${Math.floor(c.length/10)} 🏅</h3></div>`;
+ let a=getData("active");
+ let v=getData("vault");
+ 
+ // Evaluate how many books the user has completed and push corresponding badges to an array
+ let badges = [];
+ if(c.length >= 1) badges.push("Bronze Reader 🥉 (1 Book)");
+ if(c.length >= 5) badges.push("Silver Scholar 🥈 (5 Books)");
+ if(c.length >= 10) badges.push("Gold Bibliophile 🥇 (10 Books)");
+ if(c.length >= 20) badges.push("Platinum Master 🏆 (20 Books)");
+ 
+ let badgesHtml = badges.length > 0 ? badges.map(b => `<p style="font-size: 1.1rem; color: #4a5568; margin-bottom: 8px;">${b}</p>`).join("") : "<p style='color: #718096;'>No badges yet. Keep reading!</p>";
+
+ milestonesContainer.innerHTML=`
+ <div class="book">
+ <h3>Your Reading Stats 📊</h3>
+ <p style="font-size: 1.1rem; margin-bottom: 8px; color: #4a5568;"><strong>Completed Books:</strong> ${c.length}</p>
+ <p style="font-size: 1.1rem; margin-bottom: 8px; color: #4a5568;"><strong>Currently Reading:</strong> ${a.length}</p>
+ <p style="font-size: 1.1rem; color: #4a5568;"><strong>Books in Vault:</strong> ${v.length}</p>
+ </div>
+ <div class="book" style="margin-top: 20px;">
+ <h3>Your Badges 🏅</h3>
+ ${badgesHtml}
+ </div>
+ `;
 }
