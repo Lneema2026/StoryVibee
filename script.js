@@ -775,15 +775,27 @@ function setData(k,v){localStorage.setItem(k,JSON.stringify(v))}
 function getDict(k){return JSON.parse(localStorage.getItem(k)||"{}")}
 
 /* GENRE */
+
+// Renders the books for the selected genre.
 if(document.getElementById("books")){
  let g=localStorage.getItem("genre") || "";
- document.getElementById("genreTitle").innerText=g;
-
+ 
  let list = BOOKS[g];
+ let properName = g.charAt(0).toUpperCase() + g.slice(1); // Default fallback capitalization
+
+ // Find the matching key in the BOOKS object (which is already properly capitalized)
  if (!list) {
  let key = Object.keys(BOOKS).find(k => k.toLowerCase() === g.toLowerCase() || k.toLowerCase() === g.replace(/\s+/g, '').toLowerCase());
  list = key ? BOOKS[key] : [];
+ if (key) properName = key;
  }
+
+ // Add spacing for special cases so they look beautiful
+ if(properName === "SciFi") properName = "Sci-Fi";
+ if(properName === "SelfHelp") properName = "Self Help";
+
+ // Display the properly formatted title
+ document.getElementById("genreTitle").innerText = properName + " Books 📚";
 
  let booksContainer = document.getElementById("books");
  booksContainer.classList.add("books-grid");
